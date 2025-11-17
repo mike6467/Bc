@@ -13,6 +13,11 @@ app.use(express.json());
 app.use(cors());
 
 // ----------------------------
+// HEALTH-CHECK ROUTE
+// ----------------------------
+app.get("/", (req, res) => res.send("Backend is running!"));
+
+// ----------------------------
 // POSTGRESQL SETUP
 // ----------------------------
 const pool = new Pool({
