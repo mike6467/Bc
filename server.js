@@ -73,6 +73,52 @@ app.post("/api/deposit/address", async (req, res) => {
 });
 
 // ------------------------
+// DEPOSIT STATUS ROUTE
+// ------------------------
+app.post("/api/deposit/status", async (req, res) => {
+  const { address, currency, chain, amount } = req.body;
+
+  if (!address || !currency || !amount) {
+    return res.json({ status: "error", message: "Missing parameters" });
+  }
+
+  try {
+    // Fetch last 50 deposits for this currency
+    const requestPath = `/api/v5/asset/deposit-history?ccy=${currency}&limit=50`;
+    const okxRes = await okxRequest("GET", requestPath);
+
+    const deposits = okxRes.data.data || [];
+
+    // Find deposit matching address, chain, and amount
+    const deposit = deposits.find(d => 
+      d.depAddr === address &&
+      d.chain === chain &&
+      parseFloat(d.amount) === parseFloat(amount)
+    );
+
+    if (!deposit) {
+      return res.json({ status: "pending" }); // No deposit detected yet
+    }
+
+    // OKX status mapping: 0 = pending, 1 = success, 2 = failed, 3 = confirming
+    let statusText = "pending";
+    if (deposit.state === "0") statusText = "pending";
+    else if (deposit.state === "1") statusText = "success";
+    else if (deposit.state === "3") statusText = "confirming";
+    else statusText = "error";
+
+    return res.json({
+      status: statusText,
+      amount: deposit.amount
+    });
+
+  } catch (err) {
+    console.error("OKX STATUS ERROR:", err.response?.data || err);
+    return res.json({ status: "error", message: "Failed to fetch deposit status" });
+  }
+});
+
+// ------------------------
 // PORT CONFIG
 // ------------------------
 const PORT = process.env.PORT || 4000;
